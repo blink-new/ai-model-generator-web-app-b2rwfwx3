@@ -40,7 +40,7 @@ const WIZARD_STEPS: WizardStep[] = [
   {
     id: 'upload',
     title: 'Upload Reference',
-    description: 'Upload images or videos as reference',
+    description: 'Upload face images to replicate facial features',
     icon: <Upload className="w-5 h-5" />
   },
   {
@@ -158,6 +158,11 @@ export default function ModelGenerator() {
     try {
       console.log('Starting generation process...')
       
+      // Check if reference files are provided
+      if (formData.referenceFiles.length === 0) {
+        throw new Error('Please upload at least one reference image to generate models with matching facial features.')
+      }
+      
       // Upload reference files to storage first
       const referenceUrls = []
       for (const file of formData.referenceFiles) {
@@ -169,12 +174,13 @@ export default function ModelGenerator() {
 
       // Create generation prompt - make it safe and professional
       const styleDescription = formData.fashionStyle === 'Artistic' ? 'elegant artistic attire' : `${formData.fashionStyle} style clothing`
-      const prompt = `Professional portrait photography of a ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${styleDescription}, in a ${formData.background} background setting. High quality, photorealistic, professional studio lighting, fashion photography style. ${formData.customPrompt}`
+      const prompt = `Transform this person into a professional ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${styleDescription}, in a ${formData.background} background setting. Maintain the original facial features and structure while applying the requested style. High quality, photorealistic, professional studio lighting, fashion photography style. ${formData.customPrompt}`
       console.log('Generation prompt:', prompt)
 
-      // Generate images using AI
-      console.log('Calling AI image generation...')
-      const result = await blink.ai.generateImage({
+      // Use modifyImage to preserve facial features from reference images
+      console.log('Calling AI image modification with reference images...')
+      const result = await blink.ai.modifyImage({
+        images: referenceUrls, // Use the uploaded reference images
         prompt,
         size: '1024x1024',
         quality: 'high',
@@ -269,8 +275,8 @@ export default function ModelGenerator() {
               onClick={() => fileInputRef.current?.click()}
             >
               <Upload className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-white mb-2">Upload Reference Media</h3>
-              <p className="text-gray-400 mb-4">Drag and drop or click to select images or videos</p>
+              <h3 className="text-lg font-medium text-white mb-2">Upload Reference Images</h3>
+              <p className="text-gray-400 mb-4">Upload clear face photos to replicate facial features in generated models</p>
               <Button variant="outline" className="border-purple-500 text-purple-400 hover:bg-purple-500/10">
                 Choose Files
               </Button>
