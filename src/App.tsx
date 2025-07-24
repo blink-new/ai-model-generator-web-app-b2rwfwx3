@@ -2,6 +2,8 @@ import { useState, useEffect } from 'react'
 import { Header } from '@/components/layout/Header'
 import { LandingPage } from '@/components/pages/LandingPage'
 import { Dashboard } from '@/components/pages/Dashboard'
+import ModelGenerator from '@/components/pages/ModelGenerator'
+import GenerationHistory from '@/components/pages/GenerationHistory'
 import { blink } from '@/blink/client'
 
 function App() {
@@ -51,39 +53,11 @@ function App() {
         )}
         
         {currentPage === 'generator' && (
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-4">AI Model Generator</h1>
-              <p className="text-muted-foreground mb-8">Coming soon - Step-by-step wizard interface</p>
-              <div className="max-w-md mx-auto bg-card border rounded-lg p-8">
-                <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">🚧</span>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Under Construction</h3>
-                <p className="text-sm text-muted-foreground">
-                  The wizard interface is being built. Check back soon!
-                </p>
-              </div>
-            </div>
-          </div>
+          <ModelGenerator />
         )}
         
         {currentPage === 'history' && (
-          <div className="container mx-auto px-4 py-8">
-            <div className="text-center">
-              <h1 className="text-3xl font-bold mb-4">Generation History</h1>
-              <p className="text-muted-foreground mb-8">Browse your previous AI model generations</p>
-              <div className="max-w-md mx-auto bg-card border rounded-lg p-8">
-                <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <span className="text-2xl">📚</span>
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Coming Soon</h3>
-                <p className="text-sm text-muted-foreground">
-                  History page with search and filtering is being built.
-                </p>
-              </div>
-            </div>
-          </div>
+          <GenerationHistory />
         )}
       </main>
     </div>
