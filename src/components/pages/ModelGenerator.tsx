@@ -175,14 +175,14 @@ export default function ModelGenerator() {
       }
       console.log('Reference files uploaded:', referenceUrls)
 
-      // Create generation prompt - make it safe and professional
+      // Create generation prompt with proper background integration
       let styleDescription
       let additionalPrompt = ''
       
       if (formData.fashionStyle === 'Figure Study') {
-        // Use very safe, artistic terminology
-        styleDescription = 'elegant portrait photography style'
-        additionalPrompt = 'professional art photography, classical composition, museum quality lighting, tasteful and artistic, fine art portrait style'
+        // Use direct but artistic terminology for nude content
+        styleDescription = 'artistic nude figure study style'
+        additionalPrompt = 'artistic nude photography, fine art figure study, classical nude composition, tasteful artistic nude, museum quality lighting, elegant and sophisticated'
       } else if (formData.fashionStyle === 'Classical Art') {
         styleDescription = 'classical art inspired attire'
         additionalPrompt = 'in the style of classical paintings, elegant and refined'
@@ -195,7 +195,13 @@ export default function ModelGenerator() {
         styleDescription = `${formData.fashionStyle} style clothing`
       }
       
-      const prompt = `Create a professional portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, ${styleDescription}, in a ${formData.background} background setting. Maintain the original facial features and structure while applying the requested style. High quality, photorealistic, professional studio lighting. ${additionalPrompt} ${formData.customPrompt}`
+      // Build background description with custom prompt integration
+      let backgroundDescription = formData.background
+      if (formData.customPrompt.trim()) {
+        backgroundDescription = `${formData.background} background with ${formData.customPrompt.trim()}`
+      }
+      
+      const prompt = `Create a professional portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, ${styleDescription}, in a ${backgroundDescription} setting. Maintain the original facial features and structure while applying the requested style. High quality, photorealistic, professional studio lighting. ${additionalPrompt}`
       console.log('Generation prompt:', prompt)
       console.log('Fashion style selected:', formData.fashionStyle)
       console.log('Style description used:', styleDescription)
@@ -218,11 +224,18 @@ export default function ModelGenerator() {
       } catch (modifyError) {
         console.log('ModifyImage failed, trying alternative approach:', modifyError.message)
         
-        // If Figure Study fails, try with a more generic prompt
+        // If Figure Study fails, try with alternative artistic nude terminology
         if (formData.fashionStyle === 'Figure Study') {
-          console.log('Retrying Figure Study with safer prompt...')
-          const saferPrompt = `Create a professional artistic portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, elegant portrait style, in a ${formData.background} background setting. Professional photography, artistic lighting, high quality. ${formData.customPrompt}`
-          console.log('Safer prompt:', saferPrompt)
+          console.log('Retrying Figure Study with alternative prompt...')
+          
+          // Build background description with custom prompt integration for fallback
+          let fallbackBackgroundDescription = formData.background
+          if (formData.customPrompt.trim()) {
+            fallbackBackgroundDescription = `${formData.background} background with ${formData.customPrompt.trim()}`
+          }
+          
+          const saferPrompt = `Create a professional artistic portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, fine art nude photography style, in a ${fallbackBackgroundDescription} setting. Artistic nude composition, classical figure study, professional art photography, elegant and tasteful, museum quality lighting`
+          console.log('Alternative prompt:', saferPrompt)
           
           result = await blink.ai.modifyImage({
             images: referenceUrls,
@@ -535,7 +548,7 @@ export default function ModelGenerator() {
             </RadioGroup>
 
             <div className="space-y-2">
-              <Label className="text-white">Custom Prompt (Optional)</Label>
+              <Label className="text-white">Custom Background Details (Optional)</Label>
               <Textarea
                 value={formData.customPrompt}
                 onChange={(e) => setFormData(prev => ({ ...prev, customPrompt: e.target.value }))}
