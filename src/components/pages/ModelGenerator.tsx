@@ -94,7 +94,10 @@ const FASHION_STYLES = [
   { name: 'Bohemian', image: '🌸' },
   { name: 'Gothic', image: '🖤' },
   { name: 'Vintage', image: '📻' },
-  { name: 'Artistic', image: '🎨' }
+  { name: 'Artistic', image: '🎨' },
+  { name: 'Classical Art', image: '🏛️' },
+  { name: 'Renaissance', image: '🎨' },
+  { name: 'Figure Study', image: '🎭' }
 ]
 
 const BACKGROUNDS = [
@@ -173,20 +176,65 @@ export default function ModelGenerator() {
       console.log('Reference files uploaded:', referenceUrls)
 
       // Create generation prompt - make it safe and professional
-      const styleDescription = formData.fashionStyle === 'Artistic' ? 'elegant artistic attire' : `${formData.fashionStyle} style clothing`
-      const prompt = `Transform this person into a professional ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${styleDescription}, in a ${formData.background} background setting. Maintain the original facial features and structure while applying the requested style. High quality, photorealistic, professional studio lighting, fashion photography style. ${formData.customPrompt}`
+      let styleDescription
+      let additionalPrompt = ''
+      
+      if (formData.fashionStyle === 'Figure Study') {
+        // Use very safe, artistic terminology
+        styleDescription = 'elegant portrait photography style'
+        additionalPrompt = 'professional art photography, classical composition, museum quality lighting, tasteful and artistic, fine art portrait style'
+      } else if (formData.fashionStyle === 'Classical Art') {
+        styleDescription = 'classical art inspired attire'
+        additionalPrompt = 'in the style of classical paintings, elegant and refined'
+      } else if (formData.fashionStyle === 'Renaissance') {
+        styleDescription = 'renaissance period inspired clothing'
+        additionalPrompt = 'renaissance art style, classical and elegant'
+      } else if (formData.fashionStyle === 'Artistic') {
+        styleDescription = 'elegant artistic attire'
+      } else {
+        styleDescription = `${formData.fashionStyle} style clothing`
+      }
+      
+      const prompt = `Create a professional portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, ${styleDescription}, in a ${formData.background} background setting. Maintain the original facial features and structure while applying the requested style. High quality, photorealistic, professional studio lighting. ${additionalPrompt} ${formData.customPrompt}`
       console.log('Generation prompt:', prompt)
+      console.log('Fashion style selected:', formData.fashionStyle)
+      console.log('Style description used:', styleDescription)
+      console.log('Additional prompt:', additionalPrompt)
 
       // Use modifyImage to preserve facial features from reference images
       console.log('Calling AI image modification with reference images...')
-      const result = await blink.ai.modifyImage({
-        images: referenceUrls, // Use the uploaded reference images
-        prompt,
-        size: '1024x1024',
-        quality: 'high',
-        n: 4
-      })
-      console.log('AI generation result:', result)
+      console.log('Reference URLs being used:', referenceUrls)
+      
+      let result
+      try {
+        result = await blink.ai.modifyImage({
+          images: referenceUrls, // Use the uploaded reference images
+          prompt,
+          size: '1024x1024',
+          quality: 'high',
+          n: 4
+        })
+        console.log('AI generation result:', result)
+      } catch (modifyError) {
+        console.log('ModifyImage failed, trying alternative approach:', modifyError.message)
+        
+        // If Figure Study fails, try with a more generic prompt
+        if (formData.fashionStyle === 'Figure Study') {
+          console.log('Retrying Figure Study with safer prompt...')
+          const saferPrompt = `Create a professional artistic portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, elegant portrait style, in a ${formData.background} background setting. Professional photography, artistic lighting, high quality. ${formData.customPrompt}`
+          console.log('Safer prompt:', saferPrompt)
+          
+          result = await blink.ai.modifyImage({
+            images: referenceUrls,
+            prompt: saferPrompt,
+            size: '1024x1024',
+            quality: 'high',
+            n: 4
+          })
+        } else {
+          throw modifyError // Re-throw if it's not a Figure Study issue
+        }
+      }
 
       if (!result || !result.data || result.data.length === 0) {
         throw new Error('No images were generated. Please try again.')
@@ -231,9 +279,27 @@ export default function ModelGenerator() {
       
     } catch (error) {
       console.error('Generation failed:', error)
+      console.error('Error details:', {
+        message: error.message,
+        name: error.name,
+        stack: error.stack
+      })
+      
+      let errorMessage = 'An unexpected error occurred during generation.'
+      
+      if (error.message?.includes('safety')) {
+        errorMessage = 'The AI safety system rejected this request. Try adjusting your style selection or custom prompt to use more general, artistic terms.'
+      } else if (error.message?.includes('rate limit')) {
+        errorMessage = 'Rate limit exceeded. Please wait a moment and try again.'
+      } else if (error.message?.includes('reference')) {
+        errorMessage = error.message
+      } else if (error.message) {
+        errorMessage = error.message
+      }
+      
       toast({
         title: "Generation Failed",
-        description: error.message || 'An unexpected error occurred during generation.',
+        description: errorMessage,
         variant: "destructive",
       })
     } finally {
