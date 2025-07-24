@@ -8,6 +8,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
 import { Slider } from '@/components/ui/slider'
 import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/hooks/use-toast'
 import { 
   Upload, 
   ArrowRight, 
@@ -110,6 +111,7 @@ export default function ModelGenerator() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generatedImages, setGeneratedImages] = useState<string[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
   
   // Form data
   const [formData, setFormData] = useState({
@@ -154,30 +156,51 @@ export default function ModelGenerator() {
   const handleGenerate = async () => {
     setIsGenerating(true)
     try {
+      console.log('Starting generation process...')
+      
       // Upload reference files to storage first
       const referenceUrls = []
       for (const file of formData.referenceFiles) {
+        console.log('Uploading file:', file.name)
         const { publicUrl } = await blink.storage.upload(file, `references/${file.name}`, { upsert: true })
         referenceUrls.push(publicUrl)
       }
+      console.log('Reference files uploaded:', referenceUrls)
 
       // Create generation prompt
-      const prompt = `Generate a ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${formData.fashionStyle} style clothing, in a ${formData.background} background. ${formData.customPrompt}`
+      const prompt = `Create a professional portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${formData.fashionStyle} style clothing, in a ${formData.background} background setting. High quality, photorealistic, studio lighting. ${formData.customPrompt}`
+      console.log('Generation prompt:', prompt)
 
       // Generate images using AI
-      const { data } = await blink.ai.generateImage({
+      console.log('Calling AI image generation...')
+      const result = await blink.ai.generateImage({
         prompt,
         size: '1024x1024',
         quality: 'high',
         n: 4
       })
+      console.log('AI generation result:', result)
 
-      const imageUrls = data.map(img => img.url)
+      if (!result || !result.data || result.data.length === 0) {
+        throw new Error('No images were generated. Please try again.')
+      }
+
+      const imageUrls = result.data.map(img => img.url).filter(url => url)
+      console.log('Generated image URLs:', imageUrls)
+      
+      if (imageUrls.length === 0) {
+        throw new Error('Generated images are invalid. Please try again.')
+      }
+      
       setGeneratedImages(imageUrls)
+
+      // Get current user
+      const user = await blink.auth.me()
+      console.log('Current user:', user)
 
       // Save generation data to database
       const generationData: Omit<GenerationData, 'id' | 'created_at'> = {
-        user_id: (await blink.auth.me()).id,
+        user_id: user.id,
         reference_urls: referenceUrls,
         gender: formData.gender,
         ethnicity: formData.ethnicity,
@@ -190,10 +213,22 @@ export default function ModelGenerator() {
         is_favorite: false
       }
 
+      console.log('Saving to database:', generationData)
       await blink.db.generations.create(generationData)
+      console.log('Generation saved successfully!')
+      
+      toast({
+        title: "Generation Complete!",
+        description: `Successfully generated ${imageUrls.length} AI model variations.`,
+      })
       
     } catch (error) {
       console.error('Generation failed:', error)
+      toast({
+        title: "Generation Failed",
+        description: error.message || 'An unexpected error occurred during generation.',
+        variant: "destructive",
+      })
     } finally {
       setIsGenerating(false)
     }

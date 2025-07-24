@@ -4,6 +4,7 @@ import { LandingPage } from '@/components/pages/LandingPage'
 import { Dashboard } from '@/components/pages/Dashboard'
 import ModelGenerator from '@/components/pages/ModelGenerator'
 import GenerationHistory from '@/components/pages/GenerationHistory'
+import { Toaster } from '@/components/ui/toaster'
 import { blink } from '@/blink/client'
 
 function App() {
@@ -60,6 +61,8 @@ function App() {
           <GenerationHistory />
         )}
       </main>
+      
+      <Toaster />
     </div>
   )
 }
