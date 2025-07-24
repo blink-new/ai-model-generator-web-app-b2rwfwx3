@@ -20,27 +20,34 @@ export function Dashboard({ onNavigate }: DashboardProps) {
 
   const loadDashboardData = useCallback(async (userId: string) => {
     try {
-      // Load recent generations
-      const generations = await blink.db.generations.list({
+      console.log('🔄 Loading dashboard data for user:', userId)
+      
+      // Load ALL generations for stats
+      const allGenerations = await blink.db.generations.list({
         where: { userId },
-        orderBy: { createdAt: 'desc' },
-        limit: 6
+        orderBy: { createdAt: 'desc' }
       })
-      setRecentGenerations(generations)
+      
+      console.log('📊 All generations loaded:', allGenerations.length, allGenerations)
+      
+      // Load recent generations (limited)
+      const recentGenerations = allGenerations.slice(0, 6)
+      setRecentGenerations(recentGenerations)
 
-      // Calculate stats
-      const total = generations.length
-      const thisMonth = generations.filter(g => {
-        const createdDate = new Date(g.createdAt)
+      // Calculate stats from all generations
+      const total = allGenerations.length
+      const thisMonth = allGenerations.filter(g => {
+        const createdDate = new Date(g.created_at || g.createdAt)
         const now = new Date()
         return createdDate.getMonth() === now.getMonth() && 
                createdDate.getFullYear() === now.getFullYear()
       }).length
-      const favorites = generations.filter(g => Number(g.isFavorite) > 0).length
+      const favorites = allGenerations.filter(g => Number(g.is_favorite || g.isFavorite) > 0).length
 
+      console.log('📈 Stats calculated:', { total, thisMonth, favorites })
       setStats({ totalGenerations: total, thisMonth, favorites })
     } catch (error) {
-      console.error('Failed to load dashboard data:', error)
+      console.error('❌ Failed to load dashboard data:', error)
     }
   }, [])
 
@@ -198,15 +205,25 @@ export function Dashboard({ onNavigate }: DashboardProps) {
               {recentGenerations.map((generation) => (
                 <Card key={generation.id} className="overflow-hidden">
                   <div className="aspect-square bg-muted flex items-center justify-center">
-                    {generation.generatedImages && generation.generatedImages.length > 0 ? (
-                      <img 
-                        src={generation.generatedImages[0]} 
-                        alt="Generated model"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <Image className="h-16 w-16 text-muted-foreground" />
-                    )}
+                    {(() => {
+                      // Handle both snake_case and camelCase field names
+                      const images = generation.generated_images || generation.generatedImages
+                      const imageUrls = typeof images === 'string' ? images.split(',') : images
+                      
+                      return imageUrls && imageUrls.length > 0 && imageUrls[0] ? (
+                        <img 
+                          src={imageUrls[0].trim()} 
+                          alt="Generated model"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            console.log('❌ Image failed to load:', imageUrls[0])
+                            e.currentTarget.style.display = 'none'
+                          }}
+                        />
+                      ) : (
+                        <Image className="h-16 w-16 text-muted-foreground" />
+                      )
+                    })()}
                   </div>
                   <CardContent className="p-4">
                     <div className="flex items-center justify-between mb-2">
@@ -215,11 +232,11 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                       </Badge>
                       <div className="flex items-center text-xs text-muted-foreground">
                         <Clock className="h-3 w-3 mr-1" />
-                        {new Date(generation.createdAt).toLocaleDateString()}
+                        {new Date(generation.created_at || generation.createdAt).toLocaleDateString()}
                       </div>
                     </div>
                     <p className="text-sm text-muted-foreground capitalize">
-                      {generation.ethnicity} • {generation.fashionStyle}
+                      {generation.ethnicity} • {generation.fashion_style || generation.fashionStyle}
                     </p>
                   </CardContent>
                 </Card>

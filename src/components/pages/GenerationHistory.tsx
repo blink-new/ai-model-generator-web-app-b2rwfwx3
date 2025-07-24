@@ -29,13 +29,17 @@ export default function GenerationHistory() {
   const loadGenerations = useCallback(async () => {
     try {
       const user = await blink.auth.me()
+      console.log('🔄 Loading generations for user:', user.id)
+      
       const data = await blink.db.generations.list({
-        where: { user_id: user.id },
-        orderBy: { created_at: 'desc' }
+        where: { userId: user.id }, // Use camelCase for query
+        orderBy: { createdAt: 'desc' }
       })
+      
+      console.log('📊 Generations loaded:', data.length, data)
       setGenerations(data)
     } catch (error) {
-      console.error('Failed to load generations:', error)
+      console.error('❌ Failed to load generations:', error)
     } finally {
       setLoading(false)
     }
@@ -49,16 +53,16 @@ export default function GenerationHistory() {
       filtered = filtered.filter(gen => 
         gen.gender.toLowerCase().includes(searchQuery.toLowerCase()) ||
         gen.ethnicity.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        gen.fashion_style.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (gen.fashion_style || gen.fashionStyle || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         gen.background.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (gen.custom_prompt && gen.custom_prompt.toLowerCase().includes(searchQuery.toLowerCase()))
+        ((gen.custom_prompt || gen.customPrompt) && (gen.custom_prompt || gen.customPrompt).toLowerCase().includes(searchQuery.toLowerCase()))
       )
     }
 
     // Apply category filter
     switch (filterBy) {
       case 'favorites':
-        filtered = filtered.filter(gen => Number(gen.is_favorite) > 0)
+        filtered = filtered.filter(gen => Number(gen.is_favorite || gen.isFavorite) > 0)
         break
       case 'male':
         filtered = filtered.filter(gen => gen.gender === 'male')
@@ -81,9 +85,9 @@ export default function GenerationHistory() {
 
   const toggleFavorite = async (id: string, currentFavorite: boolean) => {
     try {
-      await blink.db.generations.update(id, { is_favorite: !currentFavorite })
+      await blink.db.generations.update(id, { isFavorite: !currentFavorite })
       setGenerations(prev => prev.map(gen => 
-        gen.id === id ? { ...gen, is_favorite: !currentFavorite } : gen
+        gen.id === id ? { ...gen, is_favorite: !currentFavorite, isFavorite: !currentFavorite } : gen
       ))
     } catch (error) {
       console.error('Failed to toggle favorite:', error)
@@ -172,7 +176,7 @@ export default function GenerationHistory() {
           <Card className="bg-gray-900 border-gray-700">
             <CardContent className="p-4 text-center">
               <div className="text-2xl font-bold text-amber-400">
-                {generations.filter(g => Number(g.is_favorite) > 0).length}
+                {generations.filter(g => Number(g.is_favorite || g.isFavorite) > 0).length}
               </div>
               <div className="text-sm text-gray-400">Favorites</div>
             </CardContent>
@@ -224,21 +228,35 @@ export default function GenerationHistory() {
             {filteredGenerations.map((generation) => (
               <Card key={generation.id} className="bg-gray-900 border-gray-700 overflow-hidden">
                 <div className="aspect-square relative">
-                  {generation.generated_urls && generation.generated_urls.length > 0 && (
-                    <img
-                      src={generation.generated_urls[0]}
-                      alt="Generated model"
-                      className="w-full h-full object-cover"
-                    />
-                  )}
+                  {(() => {
+                    // Handle both snake_case and camelCase field names
+                    const images = generation.generated_images || generation.generatedImages || generation.generated_urls
+                    const imageUrls = typeof images === 'string' ? images.split(',') : images
+                    
+                    return imageUrls && imageUrls.length > 0 && imageUrls[0] ? (
+                      <img
+                        src={imageUrls[0].trim()}
+                        alt="Generated model"
+                        className="w-full h-full object-cover"
+                        onError={(e) => {
+                          console.log('❌ Image failed to load:', imageUrls[0])
+                          e.currentTarget.style.display = 'none'
+                        }}
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gray-800 flex items-center justify-center">
+                        <span className="text-gray-400">No image</span>
+                      </div>
+                    )
+                  })()}
                   <div className="absolute top-2 right-2">
                     <Button
                       size="sm"
                       variant="secondary"
-                      onClick={() => toggleFavorite(generation.id, Number(generation.is_favorite) > 0)}
-                      className={`${Number(generation.is_favorite) > 0 ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
+                      onClick={() => toggleFavorite(generation.id, Number(generation.is_favorite || generation.isFavorite) > 0)}
+                      className={`${Number(generation.is_favorite || generation.isFavorite) > 0 ? 'text-red-500' : 'text-gray-400'} hover:text-red-500`}
                     >
-                      <Heart className={`w-4 h-4 ${Number(generation.is_favorite) > 0 ? 'fill-current' : ''}`} />
+                      <Heart className={`w-4 h-4 ${Number(generation.is_favorite || generation.isFavorite) > 0 ? 'fill-current' : ''}`} />
                     </Button>
                   </div>
                 </div>
@@ -250,7 +268,7 @@ export default function GenerationHistory() {
                       {generation.gender}
                     </Badge>
                     <span className="text-xs text-gray-400">
-                      {new Date(generation.created_at).toLocaleDateString()}
+                      {new Date(generation.created_at || generation.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                   
@@ -261,7 +279,7 @@ export default function GenerationHistory() {
                     </div>
                     <div className="flex items-center text-sm text-gray-300">
                       <Shirt className="w-3 h-3 mr-2 text-gray-400" />
-                      {generation.fashion_style}
+                      {generation.fashion_style || generation.fashionStyle}
                     </div>
                     <div className="flex items-center text-sm text-gray-300">
                       <Mountain className="w-3 h-3 mr-2 text-gray-400" />
@@ -269,25 +287,29 @@ export default function GenerationHistory() {
                     </div>
                   </div>
 
-                  {generation.custom_prompt && (
+                  {(generation.custom_prompt || generation.customPrompt) && (
                     <p className="text-xs text-gray-400 mb-4 line-clamp-2">
-                      "{generation.custom_prompt}"
+                      "{generation.custom_prompt || generation.customPrompt}"
                     </p>
                   )}
 
                   <div className="flex items-center justify-between">
                     <div className="flex space-x-2">
-                      {generation.generated_urls && generation.generated_urls.map((url, index) => (
-                        <Button
-                          key={index}
-                          size="sm"
-                          variant="outline"
-                          onClick={() => downloadImage(url, `model-${generation.id}-${index + 1}.png`)}
-                          className="border-gray-600 text-gray-400 hover:bg-gray-800"
-                        >
-                          <Download className="w-3 h-3" />
-                        </Button>
-                      ))}
+                      {(() => {
+                        const images = generation.generated_images || generation.generatedImages || generation.generated_urls
+                        const imageUrls = typeof images === 'string' ? images.split(',') : images
+                        return imageUrls && imageUrls.map((url, index) => (
+                          <Button
+                            key={index}
+                            size="sm"
+                            variant="outline"
+                            onClick={() => downloadImage(url.trim(), `model-${generation.id}-${index + 1}.png`)}
+                            className="border-gray-600 text-gray-400 hover:bg-gray-800"
+                          >
+                            <Download className="w-3 h-3" />
+                          </Button>
+                        ))
+                      })()}
                       <Button
                         size="sm"
                         variant="outline"
