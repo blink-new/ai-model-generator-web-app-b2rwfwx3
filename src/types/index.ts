@@ -6,37 +6,32 @@ export interface User {
 
 export interface GenerationData {
   id: string
-  userId: string
-  referenceImages: string[]
-  referenceVideos: string[]
-  gender: 'male' | 'female'
+  user_id: string
+  reference_files: string
+  gender: string
   ethnicity: string
-  fashionStyle: string
-  facialFeatures: FacialFeatures
-  bodyFeatures: BodyFeatures
+  fashion_style: string
+  facial_features: string
+  body_features: string
   background: string
-  generatedImages: string[]
-  createdAt: string
-  updatedAt: string
-  isFavorite: boolean
+  custom_background: string
+  generated_images: string
+  is_favorite: number
+  created_at: string
 }
 
 export interface FacialFeatures {
-  eyeColor: string
-  hairColor: string
-  hairStyle: string
-  skinTone: string
-  faceShape: string
-  eyeShape: string
-  noseShape: string
-  lipShape: string
+  eyeSize: number[]
+  noseShape: number[]
+  lipFullness: number[]
+  jawline: number[]
+  cheekbones: number[]
 }
 
 export interface BodyFeatures {
-  height: string
-  bodyType: string
-  musculature: string
-  pose: string
+  height: number[]
+  build: number[]
+  musculature: number[]
 }
 
 export interface WizardStep {

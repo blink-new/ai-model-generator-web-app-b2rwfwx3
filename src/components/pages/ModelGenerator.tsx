@@ -94,7 +94,7 @@ const FASHION_STYLES = [
   { name: 'Bohemian', image: '🌸' },
   { name: 'Gothic', image: '🖤' },
   { name: 'Vintage', image: '📻' },
-  { name: 'Nude', image: '🎨' }
+  { name: 'Artistic', image: '🎨' }
 ]
 
 const BACKGROUNDS = [
@@ -167,8 +167,9 @@ export default function ModelGenerator() {
       }
       console.log('Reference files uploaded:', referenceUrls)
 
-      // Create generation prompt
-      const prompt = `Create a professional portrait of a ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${formData.fashionStyle} style clothing, in a ${formData.background} background setting. High quality, photorealistic, studio lighting. ${formData.customPrompt}`
+      // Create generation prompt - make it safe and professional
+      const styleDescription = formData.fashionStyle === 'Artistic' ? 'elegant artistic attire' : `${formData.fashionStyle} style clothing`
+      const prompt = `Professional portrait photography of a ${formData.gender} model with ${formData.ethnicity} ethnicity, wearing ${styleDescription}, in a ${formData.background} background setting. High quality, photorealistic, professional studio lighting, fashion photography style. ${formData.customPrompt}`
       console.log('Generation prompt:', prompt)
 
       // Generate images using AI
@@ -199,18 +200,18 @@ export default function ModelGenerator() {
       console.log('Current user:', user)
 
       // Save generation data to database
-      const generationData: Omit<GenerationData, 'id' | 'created_at'> = {
+      const generationData = {
         user_id: user.id,
-        reference_urls: referenceUrls,
+        reference_files: referenceUrls.join(','),
         gender: formData.gender,
         ethnicity: formData.ethnicity,
         fashion_style: formData.fashionStyle,
         facial_features: JSON.stringify(formData.facialFeatures),
         body_features: JSON.stringify(formData.bodyFeatures),
         background: formData.background,
-        custom_prompt: formData.customPrompt,
-        generated_urls: imageUrls,
-        is_favorite: false
+        custom_background: formData.customPrompt,
+        generated_images: imageUrls.join(','),
+        is_favorite: 0
       }
 
       console.log('Saving to database:', generationData)
